@@ -1,1 +1,299 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>산업용 리프트 컨트롤러</title>
+    <style>
+        :root {
+            --safety-yellow: #fdb813;
+            --button-black: #1a1a1a;
+            --button-red: #d32f2f;
+            --button-green: #2e7d32;
+        }
 
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: 'Arial Black', sans-serif;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        /* 리모컨 본체 (노란색 유지) */
+        .controller {
+            width: 320px;
+            height: 700px;
+            background: var(--safety-yellow);
+            border-radius: 40px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 40px 0;
+            box-shadow: 
+                inset 0 0 20px rgba(255,255,255,0.5),
+                10px 20px 40px rgba(0,0,0,0.6);
+            border: 4px solid #b8860b;
+        }
+
+        /* 상단 위험 표시 테이프 */
+        .hazard-stripe {
+            width: 100%;
+            height: 30px;
+            background: repeating-linear-gradient(
+                45deg,
+                #000,
+                #000 20px,
+                var(--safety-yellow) 20px,
+                var(--safety-yellow) 40px
+            );
+            position: absolute;
+            top: 60px;
+        }
+
+        /* 장식용 나사못 */
+        .screw {
+            width: 15px;
+            height: 15px;
+            background: #888;
+            border-radius: 50%;
+            position: absolute;
+            box-shadow: inset 2px 2px 5px #333;
+        }
+        .s1 { top: 20px; left: 20px; }
+        .s2 { top: 20px; right: 20px; }
+        .s3 { bottom: 20px; left: 20px; }
+        .s4 { bottom: 20px; right: 20px; }
+
+        /* 버튼 영역 */
+        .button-area {
+            display: flex;
+            flex-direction: column;
+            gap: 35px;
+            margin-top: 80px;
+            z-index: 1;
+        }
+
+        .btn-outer {
+            width: 110px;
+            height: 110px;
+            background: #333;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 8px 0 #000;
+        }
+
+        .btn-inner {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.1s;
+            border: none;
+            position: relative;
+            box-shadow: inset 0 4px 10px rgba(255,255,255,0.3);
+        }
+
+        .btn-inner:active {
+            transform: translateY(6px);
+            box-shadow: inset 0 8px 10px rgba(0,0,0,0.5);
+        }
+
+        /* LED 인디케이터 */
+        .led {
+            width: 12px;
+            height: 12px;
+            background: #333;
+            border-radius: 50%;
+            margin-bottom: 5px;
+        }
+
+        .black-btn { background: linear-gradient(145deg, #444, #111); color: white; }
+        .red-btn { background: linear-gradient(145deg, #ff4444, #990000); color: white; }
+        .green-btn { background: linear-gradient(145deg, #44ff44, #006600); color: white; }
+
+        .active-led-red { background: #ff0000; box-shadow: 0 0 15px #ff0000; }
+        .active-led-green { background: #00ff00; box-shadow: 0 0 15px #00ff00; }
+
+        .icon { font-size: 40px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+        .label { color: #333; font-size: 14px; margin-top: 8px; text-align: center; }
+
+    </style>
+</head>
+<body>
+
+<div class="controller" id="body">
+    <div class="screw s1"></div><div class="screw s2"></div>
+    <div class="screw s3"></div><div class="screw s4"></div>
+    <div class="hazard-stripe"></div>
+
+    <div class="button-area">
+        <!-- UP 버튼 -->
+        <div style="display:flex; flex-direction:column; align-items:center;">
+            <div class="btn-outer">
+                <button class="btn-inner black-btn" onmousedown="startEngine(5)" ontouchstart="startEngine(5)">
+                    <div class="led" id="led1"></div>
+                    <span class="icon">▲</span>
+                </button>
+            </div>
+            <div class="label">LIFT UP</div>
+        </div>
+
+        <!-- DOWN 버튼 -->
+        <div style="display:flex; flex-direction:column; align-items:center;">
+            <div class="btn-outer">
+                <button class="btn-inner black-btn" onmousedown="startEngine(5)" ontouchstart="startEngine(5)">
+                    <div class="led" id="led2"></div>
+                    <span class="icon">▼</span>
+                </button>
+            </div>
+            <div class="label">LIFT DOWN</div>
+        </div>
+
+        <!-- EMERGENCY 버튼 (배경색 변화 없음) -->
+        <div style="display:flex; flex-direction:column; align-items:center;">
+            <div class="btn-outer" style="background:#600; box-shadow: 0 8px 0 #300;">
+                <button class="btn-inner red-btn" onclick="toggleEmergency()">
+                    <div class="led" id="led3"></div>
+                    <span class="icon" style="font-size:30px;">STOP</span>
+                </button>
+            </div>
+            <div class="label">EMERGENCY</div>
+        </div>
+
+        <!-- PHONE 버튼 -->
+        <div style="display:flex; flex-direction:column; align-items:center;">
+            <div class="btn-outer" style="background:#030; box-shadow: 0 8px 0 #020;">
+                <button class="btn-inner green-btn" onclick="callPhone()">
+                    <div class="led" id="led4"></div>
+                    <span class="icon">📞</span>
+                </button>
+            </div>
+            <div class="label">HELP / CALL</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    let isEmergency = false;
+    let sirenInterval = null;
+
+    /**
+     * 1, 2번 버튼: 진짜 강력한 기계음 생성
+     * 낮은 저음의 Sawtooth 파형과 잡음을 섞어 묵직한 엔진 느낌을 냄
+     */
+    function startEngine(duration) {
+        if (isEmergency) return;
+
+        // LED 켜기
+        document.getElementById('led1').classList.add('active-led-green');
+        document.getElementById('led2').classList.add('active-led-green');
+
+        const now = audioCtx.currentTime;
+
+        // 1. 깊은 저음 (엔진의 웅장함)
+        const osc1 = audioCtx.createOscillator();
+        const gain1 = audioCtx.createGain();
+        osc1.type = 'sawtooth';
+        osc1.frequency.setValueAtTime(40, now); // 매우 낮은 주파수
+        osc1.frequency.exponentialRampToValueAtTime(50, now + duration);
+        gain1.gain.setValueAtTime(0.3, now);
+        gain1.gain.exponentialRampToValueAtTime(0.01, now + duration);
+
+        // 2. 기계적 마찰음 (지직거리는 진동)
+        const osc2 = audioCtx.createOscillator();
+        const gain2 = audioCtx.createGain();
+        osc2.type = 'square';
+        osc2.frequency.setValueAtTime(80, now);
+        gain2.gain.setValueAtTime(0.1, now);
+        gain2.gain.exponentialRampToValueAtTime(0.01, now + duration);
+
+        // 필터를 사용하여 소리를 좀 더 묵직하게 가공 (Low Pass Filter)
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 600;
+
+        osc1.connect(gain1).connect(filter);
+        osc2.connect(gain2).connect(filter);
+        filter.connect(audioCtx.destination);
+
+        osc1.start(now);
+        osc2.start(now);
+        osc1.stop(now + duration);
+        osc2.stop(now + duration);
+
+        // 5초 후 LED 끄기
+        setTimeout(() => {
+            document.getElementById('led1').classList.remove('active-led-green');
+            document.getElementById('led2').classList.remove('active-led-green');
+        }, duration * 1000);
+    }
+
+    // 3번 버튼: 비상 정지 (배경색 변화 없이 소리와 LED만 작동)
+    function toggleEmergency() {
+        const led = document.getElementById('led3');
+
+        if (isEmergency) {
+            isEmergency = false;
+            led.classList.remove('active-led-red');
+            clearInterval(sirenInterval);
+        } else {
+            isEmergency = true;
+            led.classList.add('active-led-red');
+            sirenInterval = setInterval(playSiren, 600);
+        }
+    }
+
+    function playSiren() {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(500, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1000, audioCtx.currentTime + 0.4);
+        gain.gain.value = 0.1;
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.5);
+    }
+
+    // 4번 버튼: 전화
+    function callPhone() {
+        const led = document.getElementById('led4');
+        led.classList.add('active-led-green');
+
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.frequency.value = 440;
+        gain.gain.value = 0.1;
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 1);
+
+        setTimeout(() => {
+            const msg = new SpeechSynthesisUtterance();
+            msg.text = "전화를 연결하고 있습니다. 잠시만 기다려 주십시오.";
+            msg.lang = 'ko-KR';
+            window.speechSynthesis.speak(msg);
+            msg.onend = () => led.classList.remove('active-led-green');
+        }, 1200);
+    }
+</script>
+
+</body>
+</html>
