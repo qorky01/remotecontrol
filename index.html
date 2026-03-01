@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>아이폰11 리프트 조종기</title>
     <style>
-        /* 아이폰 11 전체 화면 설정 */
         :root {
             --bg-yellow: #f4c242;
             --border-yellow: #d4a328;
@@ -17,7 +16,7 @@
         body {
             margin: 0;
             padding: 0;
-            background-color: #121212; /* 폰 배경 */
+            background-color: #000;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -25,12 +24,12 @@
             width: 100vw;
             overflow: hidden;
             font-family: 'Arial Black', sans-serif;
+            touch-action: none; /* 화면 밀림 방지 */
         }
 
-        /* 리모컨 몸체: 아이폰 11 비율에 맞춤 */
         .remote-body {
             width: 340px;
-            height: 760px; /* 아이폰 11 세로 길이에 최적화 */
+            height: 760px;
             background: linear-gradient(145deg, #fdd835, #f4c242);
             border-radius: 45px;
             border: 5px solid var(--border-yellow);
@@ -42,23 +41,15 @@
             box-sizing: border-box;
         }
 
-        /* 위험 표시 줄무늬 (상단) */
         .hazard-stripe {
             width: 100%;
             height: 40px;
-            background: repeating-linear-gradient(
-                45deg,
-                #111,
-                #111 20px,
-                #fdd835 20px,
-                #fdd835 40px
-            );
+            background: repeating-linear-gradient(45deg, #111, #111 20px, #fdd835 20px, #fdd835 40px);
             margin-top: 60px;
             border-top: 2px solid #333;
             border-bottom: 2px solid #333;
         }
 
-        /* 네 귀퉁이 나사 */
         .screw {
             width: 18px;
             height: 18px;
@@ -72,18 +63,16 @@
         .s-bl { bottom: 20px; left: 25px; }
         .s-br { bottom: 20px; right: 25px; }
 
-        /* 버튼 컨테이너 (세로 배치) */
         .button-stack {
             flex: 1;
             display: flex;
             flex-direction: column;
-            justify-content: space-evenly; /* 버튼 간격을 균등하게 */
+            justify-content: space-evenly;
             align-items: center;
             width: 100%;
             padding: 20px 0 40px 0;
         }
 
-        /* 버튼 그룹 (버튼 + 글자) */
         .btn-group {
             display: flex;
             flex-direction: column;
@@ -91,7 +80,6 @@
             gap: 8px;
         }
 
-        /* 이미지와 똑같은 입체적 버튼 스타일 */
         .btn-outer {
             width: 110px;
             height: 110px;
@@ -114,7 +102,7 @@
             justify-content: center;
             align-items: center;
             position: relative;
-            transition: transform 0.05s, box-shadow 0.05s;
+            transition: transform 0.05s;
             box-shadow: inset 0 4px 8px rgba(255,255,255,0.3);
         }
 
@@ -123,35 +111,31 @@
             box-shadow: inset 0 8px 12px rgba(0,0,0,0.6);
         }
 
-        /* 버튼 상단 LED 구멍 */
         .led-hole {
             width: 8px;
             height: 8px;
             background: #000;
             border-radius: 50%;
             margin-bottom: 5px;
+            transition: background 0.2s;
         }
 
-        /* 개별 버튼 색상 (이미지 참조) */
         .black { background: radial-gradient(circle, #555, #111); color: white; }
         .red { background: radial-gradient(circle, #b22222, #600); color: white; }
         .green { background: radial-gradient(circle, #4caf50, #1b3d1d); color: white; }
 
-        /* LED 점등 효과 */
         .active-green { background: #0f0 !important; box-shadow: 0 0 15px #0f0 !important; }
         .active-red { background: #f00 !important; box-shadow: 0 0 15px #f00 !important; }
 
-        /* 텍스트 스타일 */
         .icon { font-size: 40px; }
         .stop-text { font-size: 26px; font-weight: 900; }
-        .label { font-size: 16px; color: #331; font-weight: 900; letter-spacing: -0.5px; }
+        .label { font-size: 16px; color: #331; font-weight: 900; }
 
     </style>
 </head>
-<body>
+<body onclick="initAudio()"> <!-- 첫 터치 시 오디오 엔진 활성화 -->
 
 <div class="remote-body">
-    <!-- 장식 요소 -->
     <div class="screw s-tl"></div><div class="screw s-tr"></div>
     <div class="screw s-bl"></div><div class="screw s-br"></div>
     <div class="hazard-stripe"></div>
@@ -204,36 +188,44 @@
 </div>
 
 <script>
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    let audioCtx = null;
     let isEmergency = false;
     let sirenInterval = null;
 
-    // 강력한 엔진 소리 (볼륨 최대)
+    // 아이폰 오디오 잠금 해제 함수
+    function initAudio() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+    }
+
+    // 1, 2번 버튼: 강력한 엔진 가동음
     function playEngine(duration) {
+        initAudio();
         if (isEmergency) return;
 
-        // LED 켜기
         document.getElementById('l1').classList.add('active-green');
         document.getElementById('l2').classList.add('active-green');
 
         const now = audioCtx.currentTime;
         const master = audioCtx.createGain();
-        master.gain.value = 1.5; // 볼륨 증폭
+        master.gain.value = 1.8; // 볼륨 더욱 증폭
 
-        // 3중 소리 레이어링 (웅장함)
-        const oscs = [
-            { f: 40, t: 'sawtooth', g: 0.6 },
-            { f: 80, t: 'square', g: 0.4 },
-            { f: 120, t: 'sawtooth', g: 0.3 }
+        const layers = [
+            { f: 45, t: 'sawtooth', g: 0.7 },
+            { f: 90, t: 'square', g: 0.4 },
+            { f: 150, t: 'sawtooth', g: 0.3 }
         ];
 
-        oscs.forEach(conf => {
+        layers.forEach(l => {
             const o = audioCtx.createOscillator();
             const g = audioCtx.createGain();
-            o.type = conf.t;
-            o.frequency.setValueAtTime(conf.f, now);
-            o.frequency.exponentialRampToValueAtTime(conf.f + 10, now + duration);
-            g.gain.setValueAtTime(conf.g, now);
+            o.type = l.t;
+            o.frequency.setValueAtTime(l.f, now);
+            g.gain.setValueAtTime(l.g, now);
             g.gain.exponentialRampToValueAtTime(0.01, now + duration);
             o.connect(g).connect(master).connect(audioCtx.destination);
             o.start(now);
@@ -246,8 +238,9 @@
         }, duration * 1000);
     }
 
-    // 비상 사이렌
+    // 3번 버튼: 비상 사이렌
     function toggleSiren() {
+        initAudio();
         const led = document.getElementById('l3');
         if (isEmergency) {
             isEmergency = false;
@@ -260,7 +253,7 @@
                 const o = audioCtx.createOscillator();
                 const g = audioCtx.createGain();
                 o.frequency.setValueAtTime(500, audioCtx.currentTime);
-                o.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.4);
+                o.frequency.exponentialRampToValueAtTime(1000, audioCtx.currentTime + 0.4);
                 g.gain.value = 0.5;
                 o.connect(g).connect(audioCtx.destination);
                 o.start(); o.stop(audioCtx.currentTime + 0.5);
@@ -268,23 +261,35 @@
         }
     }
 
-    // 전화 연결
+    // 4번 버튼: 전화 연결 (수정된 멘트 코드)
     function playCall() {
+        initAudio();
         const led = document.getElementById('l4');
         led.classList.add('active-green');
         
+        // 1. 전화 연결 신호음 (뚜르르)
         const o = audioCtx.createOscillator();
         const g = audioCtx.createGain();
-        o.frequency.value = 440;
-        g.gain.value = 0.3;
+        o.frequency.setValueAtTime(400, audioCtx.currentTime);
+        g.gain.value = 0.4;
         o.connect(g).connect(audioCtx.destination);
         o.start(); o.stop(audioCtx.currentTime + 1);
 
+        // 2. 안내 멘트 재생 (아이폰 대응 최적화)
         setTimeout(() => {
-            const msg = new SpeechSynthesisUtterance("전화를 연결하고 있습니다. 잠시만 기다려 주십시오.");
-            msg.lang = 'ko-KR';
-            window.speechSynthesis.speak(msg);
-            msg.onend = () => led.classList.remove('active-green');
+            const utterance = new SpeechSynthesisUtterance("전화를 연결하고 있습니다. 잠시만 기다려 주십시오.");
+            utterance.lang = 'ko-KR';
+            utterance.rate = 1.0;  // 속도 정상
+            utterance.pitch = 1.0; // 높낮이 정상
+            utterance.volume = 1.0; // 볼륨 최대
+            
+            // 기존 말하기 취소 후 새로 시작
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.speak(utterance);
+            
+            utterance.onend = () => {
+                led.classList.remove('active-green');
+            };
         }, 1200);
     }
 </script>
